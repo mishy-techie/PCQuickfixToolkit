@@ -1,25 +1,29 @@
 @echo off
 rem ======================================================================
-rem  PC Quick Fix Toolkit v1.0
+rem  PC Quick Fix Toolkit v1.1
 rem  What it does: one-click automatic fix, internet repair, temp file
 rem  cleanup, PC health report, Windows file repair, printer fix, and
 rem  Windows Update reset. Results are explained in plain English.
 rem  Safe: never deletes personal files, asks before bigger actions,
 rem  and creates a System Restore point before repairs.
-rem  Switches: /auto /report /flushdns /cleantemp /fixprinter
+rem  It can also check hardware (drives, battery, devices) and Windows
+rem  health (system files, updates, security) without changing anything.
+rem  Switches: /auto /check /report /flushdns /cleantemp /fixprinter
 rem            /resetupdate /help
 rem ======================================================================
 setlocal EnableExtensions
 title PC Quick Fix Toolkit
-set "VERSION=1.0"
+set "VERSION=1.1"
 set "SELF=%~f0"
 set "LOG=%USERPROFILE%\Desktop\PC-Toolkit-Log.txt"
 set "REPORT=%USERPROFILE%\Desktop\PC-Report.txt"
 set "SUM=%TEMP%\pcqf-summary.txt"
 set "GLANCE=%TEMP%\pcqf-glance.txt"
+set "HC=%USERPROFILE%\Desktop\PC-Health-Check.txt"
 
 rem ---- Command-line switches (for IT pros) ----
 if /i "%~1"=="/auto"        goto :cli_auto
+if /i "%~1"=="/check"       goto :cli_check
 if /i "%~1"=="/report"      goto :cli_report
 if /i "%~1"=="/flushdns"    goto :cli_dns
 if /i "%~1"=="/cleantemp"   goto :cli_clean
@@ -41,10 +45,12 @@ echo   4. Create a PC health report
 echo   5. Check and repair Windows files
 echo   6. Fix printer problems (stuck print jobs)
 echo   7. Reset Windows Update
-echo   8. Exit
+echo   8. Check hardware and Windows health
+echo   9. Exit
 echo.
-choice /c 12345678 /n /m "Press a number (1-8): "
-if errorlevel 8 goto :quit
+choice /c 123456789 /n /m "Press a number (1-9): "
+if errorlevel 9 goto :quit
+if errorlevel 8 goto :hwcheck
 if errorlevel 7 goto :winupdate
 if errorlevel 6 goto :printer
 if errorlevel 5 goto :sfc
@@ -78,7 +84,8 @@ echo   HOW YOUR PC LOOKS NOW
 echo ==============================================
 type "%GLANCE%"
 echo.
-echo For a deeper check of Windows system files, use option 5.
+echo For a deeper check, use option 8 (hardware and Windows health)
+echo or option 5 (repair Windows system files).
 echo.
 pause
 goto :menu
@@ -252,6 +259,27 @@ pause
 goto :menu
 
 rem ---------------------------------------------------------------
+:hwcheck
+cls
+echo --- CHECK HARDWARE AND WINDOWS HEALTH ---
+echo.
+echo This checks your drives, processor, memory, battery, devices,
+echo Windows system files and security. It changes nothing and
+echo takes about a minute.
+echo.
+call :hc_core
+echo.
+echo ==============================================
+type "%HC%"
+echo ==============================================
+echo.
+echo These results were also saved to your Desktop:
+echo %HC%
+echo.
+pause
+goto :menu
+
+rem ---------------------------------------------------------------
 :quit
 endlocal
 exit /b 0
@@ -262,6 +290,11 @@ call :auto_core
 type "%SUM%"
 echo.
 type "%GLANCE%"
+exit /b 0
+
+:cli_check
+call :hc_core
+type "%HC%"
 exit /b 0
 
 :cli_report
@@ -301,6 +334,7 @@ echo Usage:  PC-Quick-Fix-Toolkit.cmd [switch]
 echo.
 echo   (no switch)  Open the menu
 echo   /auto        Check and fix common problems automatically
+echo   /check       Check hardware and Windows health (no changes)
 echo   /report      Save a PC health report to the Desktop
 echo   /flushdns    Flush the DNS cache
 echo   /cleantemp   Clear temporary files
@@ -399,8 +433,79 @@ rem ---- Plain-English "at a glance" verdicts (prints to screen) ----
 :glance
 call :ping_test
 if "%ONLINE%%DNSOK%"=="11" (echo [OK] Internet is working.) else (echo [!] Internet problem detected. Use option 2 to fix it.)
+call :glance_disk
+call :glance_mem
+exit /b 0
+
+:glance_disk
 powershell -NoProfile -Command "$free=(Get-PSDrive %SystemDrive:~0,1%).Free/1GB; if ($free -lt 10) {'[!] Disk space is LOW: only '+[math]::Round($free,1)+' GB free. Use option 3 to free up space.'} else {'[OK] Disk space is fine: '+[math]::Round($free,1)+' GB free.'}"
+exit /b 0
+
+:glance_mem
 powershell -NoProfile -Command "$o=Get-CimInstance Win32_OperatingSystem; $f=$o.FreePhysicalMemory/$o.TotalVisibleMemorySize; if ($f -lt 0.1) {'[!] Memory is running low. Close unused programs or restart.'} else {'[OK] Memory is fine.'}; $h=[math]::Floor(((Get-Date)-$o.LastBootUpTime).TotalHours); if ($h -gt 168) {'[!] Not restarted for '+[math]::Floor($h/24)+' days. A restart often fixes slowness.'} else {'[OK] Last restart was '+$h+' hours ago.'}"
+exit /b 0
+
+rem ---- Hardware and Windows health check: writes results to %HC% ----
+:hc_core
+call :log "Hardware and Windows health check"
+>"%HC%" echo ===== HARDWARE AND WINDOWS HEALTH CHECK =====
+>>"%HC%" echo Created: %date% %time%
+>>"%HC%" echo Computer: %COMPUTERNAME%
+>>"%HC%" echo.
+echo [1/4] Checking drives and storage...
+>>"%HC%" echo ----- Drives and storage -----
+powershell -NoProfile -Command "try { Get-PhysicalDisk -ErrorAction Stop | ForEach-Object { if ($_.HealthStatus -eq 'Healthy') {'[OK] Drive ' + $_.FriendlyName + ' (' + $_.MediaType + '): healthy.'} else {'[!] Drive ' + $_.FriendlyName + ' reports ' + $_.HealthStatus + '. Back up your files now and have it checked.'} } } catch { '[?] Could not read drive health on this PC.' }" >>"%HC%" 2>&1
+call :glance_disk >>"%HC%"
+>>"%HC%" echo.
+echo [2/4] Checking processor, memory and battery...
+>>"%HC%" echo ----- Processor, memory and battery -----
+powershell -NoProfile -Command "$p=Get-CimInstance Win32_Processor | Select-Object -First 1; if ($p.LoadPercentage -gt 90) {'[!] Processor is very busy ('+$p.LoadPercentage+' percent). Close heavy programs.'} else {'[OK] Processor: '+$p.Name+' (load '+$p.LoadPercentage+' percent).'}; $o=Get-CimInstance Win32_OperatingSystem; '[i] Installed memory: '+[math]::Round($o.TotalVisibleMemorySize/1MB,1)+' GB.'" >>"%HC%" 2>&1
+call :glance_mem >>"%HC%"
+powershell -NoProfile -Command "$b=Get-CimInstance Win32_Battery | Select-Object -First 1; if (-not $b) {'[i] No battery found (desktop PC).'} else { '[i] Battery charge: '+$b.EstimatedChargeRemaining+' percent.'; try { $full=(Get-CimInstance -Namespace root\wmi -ClassName BatteryFullChargedCapacity -ErrorAction Stop | Select-Object -First 1).FullChargedCapacity; $design=(Get-CimInstance -Namespace root\wmi -ClassName BatteryStaticData -ErrorAction Stop | Select-Object -First 1).DesignedCapacity; $w=[math]::Round($full*100/$design); if ($w -lt 60) {'[!] Battery has worn down to '+$w+' percent of its original capacity. Consider replacing it.'} else {'[OK] Battery health is good: '+$w+' percent of original capacity.'} } catch { '[?] Could not read battery wear (may need administrator).' } }" >>"%HC%" 2>&1
+>>"%HC%" echo.
+echo [3/4] Checking hardware devices...
+>>"%HC%" echo ----- Hardware devices -----
+powershell -NoProfile -Command "$d=@(Get-CimInstance Win32_PnPEntity | Where-Object { $_.ConfigManagerErrorCode -ne 0 }); if ($d.Count -eq 0) {'[OK] No hardware devices are reporting problems.'} else {'[!] '+$d.Count+' hardware device(s) report problems: '+(($d | Select-Object -First 5 -ExpandProperty Name) -join ', ')+'. Check Device Manager or update drivers.'}" >>"%HC%" 2>&1
+>>"%HC%" echo.
+echo [4/4] Checking Windows health and security...
+>>"%HC%" echo ----- Windows health and security -----
+powershell -NoProfile -Command "$o=Get-CimInstance Win32_OperatingSystem; '[i] '+$o.Caption+' (build '+$o.BuildNumber+')'" >>"%HC%" 2>&1
+powershell -NoProfile -Command "$p=(Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Component Based Servicing\RebootPending') -or (Test-Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'); if ($p) {'[!] Windows is waiting for a restart to finish updates. Please restart your PC.'} else {'[OK] No restart is pending.'}" >>"%HC%" 2>&1
+call :isadmin
+if not "%ISADMIN%"=="1" goto :hc_nodism
+dism /online /cleanup-image /checkhealth >"%TEMP%\pcqf-dism.txt" 2>&1
+findstr /i /c:"No component store corruption detected" "%TEMP%\pcqf-dism.txt" >nul 2>&1
+if not errorlevel 1 goto :hc_dism_ok
+findstr /i /c:"repairable" "%TEMP%\pcqf-dism.txt" >nul 2>&1
+if not errorlevel 1 goto :hc_dism_bad
+>>"%HC%" echo [?] Could not confirm the state of Windows system components. Use option 5 for a full check.
+goto :hc_security
+:hc_dism_ok
+>>"%HC%" echo [OK] Windows system components are healthy.
+goto :hc_security
+:hc_dism_bad
+>>"%HC%" echo [!] Windows system components are damaged but repairable. Use option 5.
+goto :hc_security
+:hc_nodism
+>>"%HC%" echo [i] Windows component check skipped. Run as administrator for the full check.
+:hc_security
+powershell -NoProfile -Command "try { $s=Get-MpComputerStatus -ErrorAction Stop; if ($s.RealTimeProtectionEnabled) {'[OK] Windows virus protection is on.'} else {'[!] Windows virus protection is OFF. Turn it on in Windows Security unless you use another antivirus.'}; if ($s.AntivirusSignatureAge -gt 7) {'[!] Virus definitions are '+$s.AntivirusSignatureAge+' days old. Run Windows Update.'} } catch { '[?] Could not read Windows Security status (another antivirus may be in use).' }" >>"%HC%" 2>&1
+powershell -NoProfile -Command "try { $f=@(Get-NetFirewallProfile -ErrorAction Stop | Where-Object { $_.Enabled.ToString() -ne 'True' }); if ($f.Count -eq 0) {'[OK] Windows Firewall is on.'} else {'[!] Windows Firewall is off for: '+(($f | ForEach-Object { $_.Name }) -join ', ')+'.'} } catch { '[?] Could not read firewall status.' }" >>"%HC%" 2>&1
+powershell -NoProfile -Command "try { $h=Get-HotFix -ErrorAction Stop | Where-Object { $_.InstalledOn } | Sort-Object InstalledOn -Descending | Select-Object -First 1; if ($h) { $a=[math]::Floor(((Get-Date)-$h.InstalledOn).TotalDays); if ($a -gt 90) {'[!] The latest Windows update was installed '+$a+' days ago. Check Windows Update.'} else {'[OK] Windows was updated recently ('+$a+' days ago).'} } else {'[?] Could not find update history.'} } catch { '[?] Could not read update history.' }" >>"%HC%" 2>&1
+set "WARN=0"
+for /f %%n in ('type "%HC%" ^| find /c "[!]"') do set "WARN=%%n"
+>>"%HC%" echo.
+>>"%HC%" echo ----- Summary -----
+if "%WARN%"=="0" goto :hc_allgood
+>>"%HC%" echo %WARN% item(s) need attention. See the lines marked [!] above.
+goto :hc_notes
+:hc_allgood
+>>"%HC%" echo Everything checked looks healthy.
+:hc_notes
+>>"%HC%" echo.
+>>"%HC%" echo [i] means information, and [?] means a check could not be completed.
+>>"%HC%" echo Not covered: temperatures, fans, and a deep memory test. For a memory
+>>"%HC%" echo test, search the Start menu for Windows Memory Diagnostic.
 exit /b 0
 
 rem ---- Automatic fix: does the work, writes results to %SUM% ----
