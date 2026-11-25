@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC Quick Fix Toolkit</title>
+<meta name="description" content="A free, one-file Windows toolkit that fixes common PC problems and explains the results in plain English.">
+<style>
+:root{--bg:#f7f9fc;--card:#fff;--text:#1b2433;--muted:#5b6678;--accent:#0b6bcb;--accent-text:#fff;--border:#e1e6ee;color-scheme:light dark}
+@media (prefers-color-scheme:dark){:root{--bg:#0f141b;--card:#18202a;--text:#e8edf4;--muted:#9aa6b8;--accent:#4aa3ff;--accent-text:#06121f;--border:#2a3441}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:720px;margin:0 auto;padding:24px 18px 8px}
+header{padding:28px 0 8px}
+h1{font-size:2rem;line-height:1.2;margin:0 0 8px}
+h2{font-size:1.25rem;margin:32px 0 12px}
+p{margin:0 0 12px}
+.tag{color:var(--muted);font-size:1.05rem}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
+.btn{display:inline-block;padding:12px 18px;border-radius:10px;font-weight:600;text-decoration:none;border:1px solid var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-text)}
+.small{color:var(--muted);font-size:.9rem}
+ul.list{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+ul.list li{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+ul.list b{display:block}
+ol{padding-left:22px}
+ol li{margin-bottom:6px}
+.note{background:var(--card);border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:8px;padding:12px 14px}
+a{color:var(--accent)}
+footer{max-width:720px;margin:24px auto 0;padding:18px;border-top:1px solid var(--border);text-align:center;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>PC Quick Fix Toolkit</h1>
+  <p class="tag">Fix common Windows problems in one click. One file, nothing to install, results in plain English.</p>
+  <div class="btns">
+    <a class="btn primary" data-repo="/blob/main/PC-Quick-Fix-Toolkit.cmd" href="#">Download from GitHub</a>
+    <a class="btn" data-repo="" href="#">View the project</a>
+  </div>
+  <p class="small">Free and open source. Windows 10 and 11. Version 1.1.</p>
+</header>
+
+<h2>What it fixes</h2>
+<ul class="list">
+  <li><b>Fix my PC automatically</b>Checks the basics, fixes the safe problems and tells you what it did.</li>
+  <li><b>Internet problems</b>Tests your connection, refreshes DNS and offers a deeper network reset.</li>
+  <li><b>Free up space</b>Clears temporary files and shows space before and after.</li>
+  <li><b>Hardware and Windows health</b>Checks drive health, battery, devices, security and system components. Changes nothing.</li>
+  <li><b>Printer and Windows Update</b>Clears stuck print jobs and resets a stuck Windows Update.</li>
+  <li><b>Health report</b>Saves a report you can send to your IT person.</li>
+</ul>
+
+<h2>How to use it</h2>
+<ol>
+  <li>Download <code>PC-Quick-Fix-Toolkit.cmd</code> from GitHub.</li>
+  <li>Double-click the file on your Windows PC.</li>
+  <li>Press <b>1</b> and read the summary.</li>
+</ol>
+<p class="small">If Windows says it protected your PC, choose <b>More info</b>, then <b>Run anyway</b>, but only if you trust the source.</p>
+
+<h2>Is it safe?</h2>
+<div class="note">
+  It never deletes your personal files, asks before bigger actions, creates a System Restore point before repairs, and logs everything it does. It is a plain text file, so you can read every line before running it.
+</div>
+
+<h2>Using a phone?</h2>
+<p>A .cmd file only runs on Windows, so it won’t run on Android or iPhone. You can control a Windows PC from your phone with Microsoft Remote Desktop or Chrome Remote Desktop, or read the guide for fixing phone problems.</p>
+<div class="btns">
+  <a class="btn" data-repo="/blob/main/PHONE-TROUBLESHOOTING.md" href="#">Phone troubleshooting guide</a>
+</div>
+</main>
+
+<footer>&copy; 2026 Mishy Techie</footer>
+
+<script>
+// Change this ONE line to your GitHub repository link.
+var REPO = "https://github.com/mishy-techie/PCQuickfixToolkit";
+document.querySelectorAll("[data-repo]").forEach(function (a) {
+  a.href = REPO + a.getAttribute("data-repo");
+});
+</script>
+</body>
+</html>
